@@ -6,5 +6,7 @@ public record Signataire(
         String roleName,
         String name,
         String email,
-        Map<String, String> fields
+        Map<String, String> fields,
+        Map<String, Boolean> checkboxFields,
+        Map<String, String> radioFields
 ) {}

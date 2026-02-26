@@ -28,6 +28,7 @@ public class DocusignService {
     private DocusignConfig docusignConfig;
 
     private final RestTemplate restTemplate = new RestTemplate();
+    private SendEnvelopeRequest envelopeRequest;
 
     public String getAccessToken() throws Exception {
         // 1. Lire la clé privée avec BouncyCastle
@@ -76,36 +77,69 @@ public class DocusignService {
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.setBearerAuth(accessToken);
 
-            // Construire la liste des signataires dynamiquement
             StringBuilder rolesJson = new StringBuilder();
             for (Signataire signataire : envelopeRequest.signataires()) {
 
-                // Construire les textTabs pour chaque signataire
-                StringBuilder tabsJson = new StringBuilder();
-                for (Map.Entry<String, String> field : signataire.fields().entrySet()) {
-                    tabsJson.append("""
+                // textTabs
+                StringBuilder textTabsJson = new StringBuilder();
+                if (signataire.fields() != null) {
+                    for (Map.Entry<String, String> field : signataire.fields().entrySet()) {
+                        textTabsJson.append("""
                         {"tabLabel": "%s", "value": "%s"},
                     """.formatted(field.getKey(), field.getValue()));
+                    }
+                }
+
+                // checkboxTabs
+                StringBuilder checkboxTabsJson = new StringBuilder();
+                if (signataire.checkboxFields() != null) {
+                    for (Map.Entry<String, Boolean> field : signataire.checkboxFields().entrySet()) {
+                        checkboxTabsJson.append("""
+                        {"tabLabel": "%s", "selected": "%s"},
+                    """.formatted(field.getKey(), field.getValue()));
+                    }
+                }
+
+                // radioGroupTabs
+                StringBuilder radioTabsJson = new StringBuilder();
+                if (signataire.radioFields() != null) {
+                    for (Map.Entry<String, String> field : signataire.radioFields().entrySet()) {
+                        radioTabsJson.append("""
+                        {
+                            "groupName": "%s",
+                            "radios": [{"value": "%s", "selected": "true"}]
+                        },
+                    """.formatted(field.getKey(), field.getValue()));
+                    }
                 }
 
                 rolesJson.append("""
-                    {
-                        "roleName": "%s",
-                        "name": "%s",
-                        "email": "%s",
-                        "tabs": {
-                            "textTabs": [%s]
-                        }
-                    },
-                """.formatted(signataire.roleName(), signataire.name(), signataire.email(), tabsJson));
+                {
+                    "roleName": "%s",
+                    "name": "%s",
+                    "email": "%s",
+                    "tabs": {
+                        "textTabs": [%s],
+                        "checkboxTabs": [%s],
+                        "radioGroupTabs": [%s]
+                    }
+                },
+            """.formatted(
+                        signataire.roleName(),
+                        signataire.name(),
+                        signataire.email(),
+                        textTabsJson,
+                        checkboxTabsJson,
+                        radioTabsJson
+                ));
             }
 
             String body = """
-                {
-                    "templateId": "%s",
-                    "status": "sent",
-                    "templateRoles": [%s]
-                }
+            {
+                "templateId": "%s",
+                "status": "sent",
+                "templateRoles": [%s]
+            }
             """.formatted(envelopeRequest.templateId(), rolesJson);
 
             HttpEntity<String> request = new HttpEntity<>(body, headers);
@@ -122,4 +156,5 @@ public class DocusignService {
             log.error("ERROR : Enveloppe failure : ", e);
         }
     }
+
 }
