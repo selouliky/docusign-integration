@@ -90,7 +90,7 @@ public class DocusignService {
 
                 rolesJson.append("""
                     {
-                        "roleName": "%s",
+                        "roleName": "%s", 
                         "name": "%s",
                         "email": "%s",
                         "tabs": {
